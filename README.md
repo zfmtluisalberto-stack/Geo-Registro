@@ -3,11 +3,12 @@
 Sistema web para registrar, visualizar y administrar solicitudes de territorio y documentación asociada.
 
 ## Características
-- Dashboard con métricas básicas
-- Formulario para crear nuevos registros
-- Listado de registros con estado y archivos
-- Almacenamiento local con localStorage
+- Dashboard con métricas básicas y gráficos simples
+- Formulario para crear nuevos registros con validación de campos obligatorios
+- Listado de registros con estado y archivos asociados
+- Almacenamiento local con localStorage para persistencia entre sesiones
 - Exportación e importación de datos en formato JSON
+- Lógica reutilizable y pruebas automáticas básicas para verificar el funcionamiento
 
 ## Uso local
 1. Abrir el archivo [index.html](index.html) en el navegador, o servir la carpeta con un servidor estático.
