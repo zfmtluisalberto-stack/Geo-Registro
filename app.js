@@ -22,6 +22,10 @@
   root.renderTabla = api.renderTabla;
   root.exportarDatos = api.exportarDatos;
   root.importarDatos = api.importarDatos;
+  root.editarRegistro = api.editarRegistro;
+  root.borrarRegistro = api.borrarRegistro;
+  root.eliminarRegistro = api.eliminarRegistro;
+  root.actualizarRegistro = api.actualizarRegistro;
   root.initialize = api.initialize;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   const STORAGE_KEY = 'geo_registros';
@@ -103,6 +107,14 @@
       shp: (formValues.shp || '').toString().trim(),
       imagen: (formValues.imagen || '').toString().trim()
     };
+  }
+
+  function eliminarRegistro(items, id) {
+    return items.filter(item => item.id !== Number(id));
+  }
+
+  function actualizarRegistro(items, id, payload) {
+    return items.map(item => item.id === Number(id) ? { ...item, ...payload } : item);
   }
 
   function bindNavigation() {
@@ -297,7 +309,7 @@
     tbody.innerHTML = '';
 
     if (!registros.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay registros cargados en el sistema.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No hay registros cargados en el sistema.</td></tr>';
       return;
     }
 
@@ -322,6 +334,12 @@
               ${r.shp ? '<span class="doc-tag doc-shp">SHP</span>' : ''}
               ${r.imagen ? '<span class="doc-tag doc-img">IMG</span>' : ''}
               ${!r.plano && !r.shp && !r.imagen ? '<span class="muted">Sin archivos</span>' : ''}
+            </div>
+          </td>
+          <td>
+            <div class="pill-group">
+              <button type="button" class="btn btn-secondary" onclick="window.GEORegistroApp.editarRegistro(${r.id})">Editar</button>
+              <button type="button" class="btn btn-secondary" onclick="window.GEORegistroApp.borrarRegistro(${r.id})">Eliminar</button>
             </div>
           </td>
         </tr>
@@ -359,6 +377,56 @@
     e.target.value = '';
   }
 
+  function editarRegistro(id) {
+    const registro = registros.find(item => item.id === Number(id));
+    if (!registro) return;
+
+    const nombre = prompt('Nombre del solicitante:', registro.nombre);
+    if (nombre === null) return;
+
+    const zona = prompt('Zona:', registro.zona);
+    if (zona === null) return;
+
+    const fechaIngreso = prompt('Fecha de ingreso (YYYY-MM-DD):', registro.fecha_ingreso);
+    if (fechaIngreso === null) return;
+
+    const fechaRespuesta = prompt('Fecha de respuesta (YYYY-MM-DD, dejar vacío si no aplica):', registro.fecha_respuesta || '');
+    if (fechaRespuesta === null) return;
+
+    const zf = prompt('ZF:', registro.zf || '');
+    if (zf === null) return;
+
+    const tgm = prompt('TGM:', registro.tgm || '0');
+    if (tgm === null) return;
+
+    const superficie = prompt('Superficie (m²):', registro.superficie || '0');
+    if (superficie === null) return;
+
+    const actualizado = actualizarRegistro(registros, id, {
+      nombre: nombre.trim(),
+      zona: zona.trim(),
+      fecha_ingreso: fechaIngreso.trim(),
+      fecha_respuesta: fechaRespuesta.trim(),
+      zf: zf.trim() || 'N/A',
+      tgm: Number(tgm) || 0,
+      superficie: Number(superficie) || 0
+    });
+
+    registros = actualizado;
+    persistRegistros();
+    renderTabla();
+    renderDashboard();
+    alert('Registro actualizado.');
+  }
+
+  function borrarRegistro(id) {
+    if (!confirm('¿Desea eliminar este registro?')) return;
+    registros = eliminarRegistro(registros, id);
+    persistRegistros();
+    render();
+    alert('Registro eliminado.');
+  }
+
   function initialize() {
     registros = loadRegistros();
     bindFileLabels();
@@ -387,6 +455,10 @@
     renderTabla,
     exportarDatos,
     importarDatos,
+    editarRegistro,
+    borrarRegistro,
+    eliminarRegistro,
+    actualizarRegistro,
     initialize
   };
 });

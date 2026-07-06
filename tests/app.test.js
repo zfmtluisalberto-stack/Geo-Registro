@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm } = require('../app.js');
+const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro } = require('../app.js');
 
 test('normalizeRegistros devuelve el fallback para datos inválidos', () => {
   const fallback = [{ id: 1, nombre: 'Demo' }];
@@ -45,4 +45,16 @@ test('buildRegistroFromForm genera un registro con el siguiente id', () => {
   assert.equal(result.nombre, 'Ana');
   assert.equal(result.zona, 'Centro');
   assert.equal(result.superficie, 150);
+});
+
+test('eliminarRegistro quita el elemento solicitado', () => {
+  const result = eliminarRegistro([{ id: 1, nombre: 'Uno' }, { id: 2, nombre: 'Dos' }], 1);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].id, 2);
+});
+
+test('actualizarRegistro reemplaza los datos del registro indicado', () => {
+  const result = actualizarRegistro([{ id: 1, nombre: 'Uno', zona: 'Norte' }], 1, { nombre: 'Modificado', zona: 'Sur' });
+  assert.equal(result[0].nombre, 'Modificado');
+  assert.equal(result[0].zona, 'Sur');
 });
