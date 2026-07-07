@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro } = require('../app.js');
+const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro, normalizarDatosImportados } = require('../app.js');
 
 test('normalizeRegistros devuelve el fallback para datos inválidos', () => {
   const fallback = [{ id: 1, nombre: 'Demo' }];
@@ -57,4 +57,17 @@ test('actualizarRegistro reemplaza los datos del registro indicado', () => {
   const result = actualizarRegistro([{ id: 1, nombre: 'Uno', zona: 'Norte' }], 1, { nombre: 'Modificado', zona: 'Sur' });
   assert.equal(result[0].nombre, 'Modificado');
   assert.equal(result[0].zona, 'Sur');
+});
+
+test('normalizarDatosImportados convierte filas de Excel a registros compatibles', () => {
+  const result = normalizarDatosImportados([
+    { Nombre: 'Ana', Zona: 'Centro', 'Fecha de ingreso': '2026-07-06', 'Fecha de respuesta': '2026-07-08', ZF: 'Z-8', TGM: '1.25', Superficie: '150', Plano: 'plano.pdf', SHP: 'sector.zip', Imagen: 'foto.jpg' },
+    { solicitante: 'Luis', zona: 'Norte', fecha_ingreso: '2026-07-10', fecha_respuesta: '', zf: '', tgm: '2.1', superficie: '200', plano: '', shp: '', imagen: '' }
+  ]);
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0].nombre, 'Ana');
+  assert.equal(result[0].zona, 'Centro');
+  assert.equal(result[0].superficie, 150);
+  assert.equal(result[1].fecha_respuesta, '');
 });

@@ -7,7 +7,7 @@ Sistema web para registrar, visualizar y administrar solicitudes de territorio y
 - Formulario para crear nuevos registros con validación de campos obligatorios
 - Listado de registros con estado y archivos asociados
 - Almacenamiento local con localStorage para persistencia entre sesiones
-- Exportación e importación de datos en formato JSON
+- Exportación e importación de datos en formato JSON y soporte para archivos Excel/CSV
 - Lógica reutilizable y pruebas automáticas básicas para verificar el funcionamiento
 
 ## Uso local

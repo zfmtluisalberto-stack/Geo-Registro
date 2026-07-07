@@ -280,8 +280,8 @@
         <section id="view-listado" class="section">
           <div class="toolbar">
             <button type="button" onclick="exportarDatos()">⬇️ Exportar JSON</button>
-            <button type="button" onclick="document.getElementById('importInput').click()">⬆️ Importar JSON</button>
-            <input id="importInput" type="file" accept="application/json" hidden onchange="importarDatos(event)" />
+            <button type="button" onclick="document.getElementById('importInput').click()">⬆️ Importar Excel/JSON</button>
+            <input id="importInput" type="file" accept="application/json,.xlsx,.xls,.csv,.tsv" hidden onchange="importarDatos(event)" />
           </div>
           <div class="panel" style="padding: 0;">
             <div class="table-wrap">
@@ -306,6 +306,7 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.1/dist/xlsx.full.min.js"></script>
   <script src="./app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {

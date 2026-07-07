@@ -22,6 +22,7 @@
   root.renderTabla = api.renderTabla;
   root.exportarDatos = api.exportarDatos;
   root.importarDatos = api.importarDatos;
+  root.normalizarDatosImportados = api.normalizarDatosImportados;
   root.editarRegistro = api.editarRegistro;
   root.borrarRegistro = api.borrarRegistro;
   root.eliminarRegistro = api.eliminarRegistro;
@@ -347,6 +348,74 @@
     });
   }
 
+  function obtenerValorCampo(row, aliases) {
+    if (!row || typeof row !== 'object') return '';
+    const entries = Object.entries(row).filter(([key]) => key !== undefined);
+    const lookup = new Map(entries.map(([key, value]) => [String(key).trim().toLowerCase(), value]));
+
+    for (const alias of aliases) {
+      const key = lookup.get(alias.toLowerCase());
+      if (key !== undefined) return key;
+    }
+
+    return '';
+  }
+
+  function normalizarDatosImportados(datosImportados, registrosBase = []) {
+    if (!Array.isArray(datosImportados)) return [];
+
+    const registrosBaseValidos = Array.isArray(registrosBase) ? registrosBase : [];
+    const siguienteId = registrosBaseValidos.length ? Math.max(...registrosBaseValidos.map(r => Number(r.id) || 0)) + 1 : 1;
+
+    return datosImportados
+      .map((fila, index) => {
+        const nombre = String(obtenerValorCampo(fila, ['nombre', 'solicitante', 'nombre del solicitante', 'nombre_solicitante']) || '').trim();
+        const zona = String(obtenerValorCampo(fila, ['zona', 'zone']) || '').trim();
+        const fechaIngreso = String(obtenerValorCampo(fila, ['fecha_ingreso', 'fecha de ingreso', 'fechaingreso']) || '').trim();
+        const fechaRespuesta = String(obtenerValorCampo(fila, ['fecha_respuesta', 'fecha de respuesta']) || '').trim();
+        const zf = String(obtenerValorCampo(fila, ['zf', 'zf (zona federal)']) || '').trim();
+        const tgm = String(obtenerValorCampo(fila, ['tgm']) || '').trim();
+        const superficie = String(obtenerValorCampo(fila, ['superficie']) || '').trim();
+        const plano = String(obtenerValorCampo(fila, ['plano']) || '').trim();
+        const shp = String(obtenerValorCampo(fila, ['shp', 'shape', 'shapefile']) || '').trim();
+        const imagen = String(obtenerValorCampo(fila, ['imagen', 'foto', 'imagen_terreno']) || '').trim();
+
+        if (!nombre && !zona && !fechaIngreso && !superficie) return null;
+
+        return {
+          id: siguienteId + index,
+          nombre,
+          zona,
+          fecha_ingreso: fechaIngreso,
+          fecha_respuesta: fechaRespuesta,
+          zf: zf || 'N/A',
+          tgm: Number(tgm) || 0,
+          superficie: Number(superficie) || 0,
+          plano,
+          shp,
+          imagen
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function parsearCsv(texto) {
+    if (!texto) return [];
+    const lineas = texto.split(/\r?\n/).map(linea => linea.trim()).filter(Boolean);
+    if (!lineas.length) return [];
+
+    const delimiter = lineas[0].includes(';') && !lineas[0].includes(',') ? ';' : (lineas[0].includes('\t') ? '\t' : ',');
+    const encabezados = lineas[0].split(delimiter).map(c => c.trim().replace(/^['"]|['"]$/g, ''));
+
+    return lineas.slice(1).map(linea => {
+      const celdas = linea.split(delimiter).map(c => c.trim().replace(/^['"]|['"]$/g, ''));
+      return encabezados.reduce((acc, header, index) => {
+        acc[header] = celdas[index] || '';
+        return acc;
+      }, {});
+    }).filter(fila => Object.values(fila).some(valor => String(valor).trim()));
+  }
+
   function exportarDatos() {
     const blob = new Blob([JSON.stringify(registros, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -360,20 +429,54 @@
   function importarDatos(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
+
+    const extension = (file.name.split('.').pop() || '').toLowerCase();
+    const leerComoTexto = () => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsText(file);
+    });
+
+    const leerComoArrayBuffer = () => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsArrayBuffer(file);
+    });
+
+    const procesarArchivo = async () => {
       try {
-        const datos = JSON.parse(event.target.result);
-        if (!Array.isArray(datos)) throw new Error('Formato inválido');
-        registros = normalizeRegistros(JSON.stringify(datos), registros);
+        if (extension === 'json') {
+          const texto = await leerComoTexto();
+          const datos = JSON.parse(texto);
+          const payload = Array.isArray(datos) ? datos : (datos && Array.isArray(datos.registros) ? datos.registros : null);
+          if (!payload) throw new Error('Formato inválido');
+          registros = [...registros, ...normalizarDatosImportados(payload, registros)];
+        } else if (['xlsx', 'xls', 'ods'].includes(extension) && typeof window !== 'undefined' && window.XLSX) {
+          const buffer = await leerComoArrayBuffer();
+          const workbook = window.XLSX.read(buffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const datos = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+          registros = [...registros, ...normalizarDatosImportados(datos, registros)];
+        } else if (['csv', 'tsv'].includes(extension)) {
+          const texto = await leerComoTexto();
+          const datos = parsearCsv(texto);
+          registros = [...registros, ...normalizarDatosImportados(datos, registros)];
+        } else {
+          throw new Error('Formato no soportado');
+        }
+
         persistRegistros();
         render();
         alert('Datos importados correctamente.');
       } catch (error) {
-        alert('No se pudo importar el archivo.');
+        console.error(error);
+        alert('No se pudo importar el archivo. Usa JSON, CSV o Excel (.xlsx/.xls).');
       }
     };
-    reader.readAsText(file);
+
+    procesarArchivo();
     e.target.value = '';
   }
 
@@ -455,6 +558,7 @@
     renderTabla,
     exportarDatos,
     importarDatos,
+    normalizarDatosImportados,
     editarRegistro,
     borrarRegistro,
     eliminarRegistro,
