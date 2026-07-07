@@ -48,8 +48,47 @@
     }
   }
 
+  function serializarRegistrosParaUrl(items) {
+    try {
+      return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(items)))));
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function deserializarRegistrosDesdeUrl(serialized) {
+    if (!serialized) return defaultRegistros;
+    try {
+      const decoded = decodeURIComponent(serialized);
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(decoded))));
+      return Array.isArray(parsed) ? parsed : defaultRegistros;
+    } catch (error) {
+      return defaultRegistros;
+    }
+  }
+
+  function getSharedRegistrosFromUrl() {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const payload = params.get('registros');
+    if (!payload) return null;
+    return deserializarRegistrosDesdeUrl(payload);
+  }
+
+  function updateUrlWithRegistros(items) {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('registros', serializarRegistrosParaUrl(items));
+    window.history.replaceState({}, '', url.toString());
+  }
+
   function loadRegistros() {
     try {
+      const shared = getSharedRegistrosFromUrl();
+      if (shared) {
+        return normalizeRegistros(JSON.stringify(shared), defaultRegistros);
+      }
+
       const raw = localStorage.getItem(STORAGE_KEY);
       return normalizeRegistros(raw, defaultRegistros);
     } catch (error) {
@@ -60,6 +99,7 @@
   function persistRegistros() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+      updateUrlWithRegistros(registros);
     } catch (error) {
       console.warn('No se pudo guardar en localStorage.', error);
     }
@@ -532,6 +572,9 @@
 
   function initialize() {
     registros = loadRegistros();
+    if (typeof window !== 'undefined' && !window.location.search.includes('registros=')) {
+      updateUrlWithRegistros(registros);
+    }
     bindFileLabels();
     bindNavigation();
     bindForm();
@@ -546,6 +589,8 @@
     buildRegistroFromForm,
     loadRegistros,
     persistRegistros,
+    serializarRegistrosParaUrl,
+    deserializarRegistrosDesdeUrl,
     bindNavigation,
     bindFileLabels,
     bindForm,

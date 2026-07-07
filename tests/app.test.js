@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro, normalizarDatosImportados } = require('../app.js');
+const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro, normalizarDatosImportados, serializarRegistrosParaUrl, deserializarRegistrosDesdeUrl } = require('../app.js');
 
 test('normalizeRegistros devuelve el fallback para datos inválidos', () => {
   const fallback = [{ id: 1, nombre: 'Demo' }];
@@ -70,4 +70,15 @@ test('normalizarDatosImportados convierte filas de Excel a registros compatibles
   assert.equal(result[0].zona, 'Centro');
   assert.equal(result[0].superficie, 150);
   assert.equal(result[1].fecha_respuesta, '');
+});
+
+test('serializarRegistrosParaUrl y deserializarRegistrosDesdeUrl conservan los registros', () => {
+  const registros = [{ id: 1, nombre: 'Ana', zona: 'Centro', superficie: 120 }];
+  const serialized = serializarRegistrosParaUrl(registros);
+  const restored = deserializarRegistrosDesdeUrl(serialized);
+
+  assert.equal(typeof serialized, 'string');
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].nombre, 'Ana');
+  assert.equal(restored[0].superficie, 120);
 });
