@@ -101,7 +101,7 @@
       zona: (formValues.zona || '').toString().trim(),
       fecha_ingreso: (formValues.fecha_ingreso || '').toString().trim(),
       fecha_respuesta: (formValues.fecha_respuesta || '').toString().trim(),
-      zf: (formValues.zf || '').toString().trim() || 'N/A',
+      zf: Number(formValues.zf) || 0,
       tgm: Number(formValues.tgm) || 0,
       superficie: Number(formValues.superficie) || 0,
       plano: (formValues.plano || '').toString().trim(),

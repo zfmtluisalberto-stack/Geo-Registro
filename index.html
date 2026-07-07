@@ -215,14 +215,7 @@
               </div>
               <div class="field">
                 <label for="zona">Zona *</label>
-                <select id="zona" name="zona" required>
-                  <option value="">Seleccione una zona...</option>
-                  <option value="Norte">Zona Norte</option>
-                  <option value="Sur">Zona Sur</option>
-                  <option value="Este">Zona Este</option>
-                  <option value="Oeste">Zona Oeste</option>
-                  <option value="Centro">Zona Centro</option>
-                </select>
+                <input id="zona" name="zona" required placeholder="Ingrese la zona libre" />
               </div>
               <div class="field">
                 <label for="fecha_ingreso">Fecha de ingreso *</label>
@@ -233,12 +226,12 @@
                 <input id="fecha_respuesta" name="fecha_respuesta" type="date" />
               </div>
               <div class="field">
-                <label for="zf">ZF (Zona federal)</label>
-                <input id="zf" name="zf" placeholder="Ej. Cat-3" />
+                <label for="zf">ZF (m²)</label>
+                <input id="zf" name="zf" type="number" step="0.01" placeholder="Ej. 1250" />
               </div>
               <div class="field">
-                <label for="tgm">TGM</label>
-                <input id="tgm" name="tgm" type="number" step="0.01" placeholder="Ej. 1.45" />
+                <label for="tgm">TGM (m²)</label>
+                <input id="tgm" name="tgm" type="number" step="0.01" placeholder="Ej. 1250" />
               </div>
               <div class="field full">
                 <label for="superficie">Superficie (m²) *</label>
