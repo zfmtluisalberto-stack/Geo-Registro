@@ -133,12 +133,16 @@
             setSyncStatus('Sincronizado con Firestore', 'success');
             resolve();
           })
-          .catch(() => {
-            setSyncStatus('Error sincronizando Firestore', 'error');
-            resolve();
-          });
+          .catch((e) => {
+              const msg = e && e.message ? e.message : String(e);
+              setSyncStatus('Error sincronizando Firestore: ' + msg, 'error');
+              console.error('syncFirebaseRegistros error:', e);
+              resolve();
+            });
       } catch (error) {
-        setSyncStatus('Error sincronizando Firestore', 'error');
+        const msg = error && error.message ? error.message : String(error);
+        setSyncStatus('Error sincronizando Firestore: ' + msg, 'error');
+        console.error('syncFirebaseRegistros exception:', error);
         resolve();
       }
     });
