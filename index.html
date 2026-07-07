@@ -67,6 +67,15 @@
       background: #ecfdf5; color: #047857; padding: 8px 12px; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
     }
 
+    .sync-status {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .sync-status.success { color: #047857; }
+    .sync-status.warning { color: #b45309; }
+    .sync-status.error { color: #b91c1c; }
+
     .content { padding: 24px; overflow-y: auto; }
     .panel {
       background: var(--panel); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
@@ -157,7 +166,10 @@
 
     <main class="main">
       <header class="topbar">
-        <h2 id="page-title">Dashboard General</h2>
+        <div>
+          <h2 id="page-title">Dashboard General</h2>
+          <div class="sync-status" id="sync-status">Sincronización Firestore pendiente</div>
+        </div>
         <div class="status-pill">● Sistema activo</div>
       </header>
 
@@ -304,12 +316,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
   <script>
     window.FIREBASE_CONFIG = {
-      apiKey: 'TU_API_KEY',
-      authDomain: 'TU_PROJECT_ID.firebaseapp.com',
-      projectId: 'TU_PROJECT_ID',
-      storageBucket: 'TU_PROJECT_ID.appspot.com',
-      messagingSenderId: 'TU_MESSAGING_SENDER_ID',
-      appId: 'TU_APP_ID'
+      apiKey: "AIzaSyCf86NWbx4e_n0gEHIbIZNSvkyQ-ulWowI",
+      authDomain: "geo-cnr.firebaseapp.com",
+      projectId: "geo-cnr",
+      storageBucket: "geo-cnr.firebasestorage.app",
+      messagingSenderId: "60295589914",
+      appId: "1:60295589914:web:3b3bdc5f8a4dfae595e1a3"
     };
 
     if (window.firebase) {

@@ -105,20 +105,40 @@
     return null;
   }
 
+  function setSyncStatus(message, variant = 'warning') {
+    if (typeof document === 'undefined') return;
+    const element = document.getElementById('sync-status');
+    if (!element) return;
+    element.textContent = message;
+    element.classList.toggle('success', variant === 'success');
+    element.classList.toggle('warning', variant === 'warning');
+    element.classList.toggle('error', variant === 'error');
+  }
+
   function syncFirebaseRegistros() {
     const config = getFirebaseConfig();
     if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
+      setSyncStatus('Firestore no disponible', 'warning');
       return Promise.resolve();
     }
+
+    setSyncStatus('Sincronizando con Firestore...', 'warning');
 
     return new Promise((resolve) => {
       try {
         const db = window.firebase.firestore();
-        const batch = db.batch();
         const ref = db.collection(FIREBASE_COLLECTION).doc('app-data');
-        batch.set(ref, { registros, updatedAt: new Date().toISOString() });
-        batch.commit().then(() => resolve()).catch(() => resolve());
+        ref.set({ registros, updatedAt: new Date().toISOString() })
+          .then(() => {
+            setSyncStatus('Sincronizado con Firestore', 'success');
+            resolve();
+          })
+          .catch(() => {
+            setSyncStatus('Error sincronizando Firestore', 'error');
+            resolve();
+          });
       } catch (error) {
+        setSyncStatus('Error sincronizando Firestore', 'error');
         resolve();
       }
     });
@@ -127,8 +147,11 @@
   function loadFirebaseRegistros() {
     const config = getFirebaseConfig();
     if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
+      setSyncStatus('Firestore no disponible', 'warning');
       return Promise.resolve(null);
     }
+
+    setSyncStatus('Cargando datos desde Firestore...', 'warning');
 
     return new Promise((resolve) => {
       try {
@@ -136,12 +159,18 @@
         db.collection(FIREBASE_COLLECTION).doc('app-data').get().then((doc) => {
           if (doc.exists) {
             const data = doc.data();
+            setSyncStatus('Datos cargados desde Firestore', 'success');
             resolve(Array.isArray(data?.registros) ? data.registros : null);
           } else {
+            setSyncStatus('No hay datos en Firestore', 'warning');
             resolve(null);
           }
-        }).catch(() => resolve(null));
+        }).catch(() => {
+          setSyncStatus('No se pudo cargar Firestore', 'error');
+          resolve(null);
+        });
       } catch (error) {
+        setSyncStatus('No se pudo cargar Firestore', 'error');
         resolve(null);
       }
     });
