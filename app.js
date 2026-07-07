@@ -30,6 +30,7 @@
   root.initialize = api.initialize;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   const STORAGE_KEY = 'geo_registros';
+  const FIREBASE_COLLECTION = 'registros';
   const defaultRegistros = [
     { id: 1, nombre: 'Juan Pérez Lozano', fecha_ingreso: '2026-01-10', fecha_respuesta: '2026-01-22', plano: 'plano_01.pdf', shp: 'poligono_norte.zip', imagen: 'captura1.png', zf: 'Z-1', tgm: 1.2, superficie: 1540.5, zona: 'Norte' },
     { id: 2, nombre: 'Desarrollos Urbanos SA', fecha_ingreso: '2026-02-14', fecha_respuesta: '', plano: 'plano_urb.pdf', shp: 'sector_sur.zip', imagen: '', zf: 'Z-3', tgm: 2.1, superficie: 4890, zona: 'Sur' },
@@ -96,6 +97,56 @@
     }
   }
 
+  function getFirebaseConfig() {
+    if (typeof window !== 'undefined' && window.FIREBASE_CONFIG) {
+      return window.FIREBASE_CONFIG;
+    }
+
+    return null;
+  }
+
+  function syncFirebaseRegistros() {
+    const config = getFirebaseConfig();
+    if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      try {
+        const db = window.firebase.firestore();
+        const batch = db.batch();
+        const ref = db.collection(FIREBASE_COLLECTION).doc('app-data');
+        batch.set(ref, { registros, updatedAt: new Date().toISOString() });
+        batch.commit().then(() => resolve()).catch(() => resolve());
+      } catch (error) {
+        resolve();
+      }
+    });
+  }
+
+  function loadFirebaseRegistros() {
+    const config = getFirebaseConfig();
+    if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      try {
+        const db = window.firebase.firestore();
+        db.collection(FIREBASE_COLLECTION).doc('app-data').get().then((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            resolve(Array.isArray(data?.registros) ? data.registros : null);
+          } else {
+            resolve(null);
+          }
+        }).catch(() => resolve(null));
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
   function persistRegistros() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
@@ -103,6 +154,8 @@
     } catch (error) {
       console.warn('No se pudo guardar en localStorage.', error);
     }
+
+    syncFirebaseRegistros();
   }
 
   function validateRegistro(values) {
@@ -570,8 +623,9 @@
     alert('Registro eliminado.');
   }
 
-  function initialize() {
-    registros = loadRegistros();
+  async function initialize() {
+    const firebaseRegistros = await loadFirebaseRegistros();
+    registros = Array.isArray(firebaseRegistros) && firebaseRegistros.length ? firebaseRegistros : loadRegistros();
     if (typeof window !== 'undefined' && !window.location.search.includes('registros=')) {
       updateUrlWithRegistros(registros);
     }
@@ -591,6 +645,7 @@
     persistRegistros,
     serializarRegistrosParaUrl,
     deserializarRegistrosDesdeUrl,
+    getFirebaseConfig,
     bindNavigation,
     bindFileLabels,
     bindForm,

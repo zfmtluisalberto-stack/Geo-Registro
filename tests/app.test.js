@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro, normalizarDatosImportados, serializarRegistrosParaUrl, deserializarRegistrosDesdeUrl } = require('../app.js');
+const { normalizeRegistros, validateRegistro, getDashboardSummary, buildRegistroFromForm, eliminarRegistro, actualizarRegistro, normalizarDatosImportados, serializarRegistrosParaUrl, deserializarRegistrosDesdeUrl, getFirebaseConfig } = require('../app.js');
 
 test('normalizeRegistros devuelve el fallback para datos inválidos', () => {
   const fallback = [{ id: 1, nombre: 'Demo' }];
@@ -81,4 +81,11 @@ test('serializarRegistrosParaUrl y deserializarRegistrosDesdeUrl conservan los r
   assert.equal(restored.length, 1);
   assert.equal(restored[0].nombre, 'Ana');
   assert.equal(restored[0].superficie, 120);
+});
+
+test('getFirebaseConfig devuelve la configuración global si existe', () => {
+  global.window = { FIREBASE_CONFIG: { projectId: 'demo-project' } };
+  const config = getFirebaseConfig();
+
+  assert.equal(config.projectId, 'demo-project');
 });
