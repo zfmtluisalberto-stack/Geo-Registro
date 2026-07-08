@@ -105,6 +105,46 @@
     return null;
   }
 
+  function getFirestoreProxyUrl() {
+    if (typeof window !== 'undefined' && window.FIRESTORE_PROXY_URL) {
+      return window.FIRESTORE_PROXY_URL;
+    }
+
+    return null;
+  }
+
+  function isFirestoreDirectEnabled() {
+    if (typeof window === 'undefined') return false;
+    return window.FIRESTORE_DIRECT === true;
+  }
+
+  function isProxyUnavailableError(error) {
+    const msg = error && error.message ? error.message.toString().toLowerCase() : '';
+    return msg.includes('failed to fetch') || msg.includes('404') || msg.includes('not found') || msg.includes('proxy');
+  }
+
+  async function requestFirestoreProxy(method, body = null) {
+    const proxyUrl = getFirestoreProxyUrl();
+    if (!proxyUrl || typeof window === 'undefined' || typeof fetch !== 'function') {
+      throw new Error('Proxy de Firestore no configurado');
+    }
+
+    const response = await fetch(proxyUrl, {
+      method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+
+    if (!response.ok) {
+      const errorPayload = await response.text();
+      throw new Error(`Proxy error: ${response.status} ${response.statusText} - ${errorPayload}`);
+    }
+
+    return response.json();
+  }
+
   function setSyncStatus(message, variant = 'warning') {
     if (typeof document === 'undefined') return;
     const element = document.getElementById('sync-status');
@@ -115,14 +155,49 @@
     element.classList.toggle('error', variant === 'error');
   }
 
+  function buildFirestoreErrorMessage(base, error) {
+    const msg = error && error.message ? error.message : String(error);
+    if (msg.toLowerCase().includes('permission')) {
+      return base + ': ' + msg + '. Verifica las reglas de Firestore o usa el proxy Netlify.';
+    }
+    return base + ': ' + msg;
+  }
+
   function syncFirebaseRegistros() {
+    const proxyUrl = getFirestoreProxyUrl();
+    if (proxyUrl) {
+      setSyncStatus('Sincronizando con proxy Firestore...', 'warning');
+      return requestFirestoreProxy('POST', { registros })
+        .then(() => {
+          setSyncStatus('Sincronizado con proxy Firestore', 'success');
+        })
+        .catch((e) => {
+          if (isFirestoreDirectEnabled() && isProxyUnavailableError(e)) {
+            console.warn('Proxy Firestore no disponible, intentando Firestore directo...', e);
+            return syncFirebaseRegistrosDirect();
+          }
+          const msg = buildFirestoreErrorMessage('Error sincronizando proxy Firestore', e);
+          setSyncStatus(msg, 'error');
+          console.error('syncFirebaseRegistros proxy error:', e);
+        });
+    }
+
+    if (isFirestoreDirectEnabled()) {
+      return syncFirebaseRegistrosDirect();
+    }
+
+    setSyncStatus('Sin proxy de Firestore y Firestore directo no habilitado. Configure FIRESTORE_DIRECT o use proxy.', 'warning');
+    return Promise.resolve();
+  }
+
+  function syncFirebaseRegistrosDirect() {
     const config = getFirebaseConfig();
     if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
-      setSyncStatus('Firestore no disponible', 'warning');
+      setSyncStatus('Firestore directo no disponible', 'warning');
       return Promise.resolve();
     }
 
-    setSyncStatus('Sincronizando con Firestore...', 'warning');
+    setSyncStatus('Sincronizando con Firestore directo...', 'warning');
 
     return new Promise((resolve) => {
       try {
@@ -130,32 +205,61 @@
         const ref = db.collection(FIREBASE_COLLECTION).doc('app-data');
         ref.set({ registros, updatedAt: new Date().toISOString() })
           .then(() => {
-            setSyncStatus('Sincronizado con Firestore', 'success');
+            setSyncStatus('Sincronizado con Firestore directo', 'success');
             resolve();
           })
           .catch((e) => {
-              const msg = e && e.message ? e.message : String(e);
-              setSyncStatus('Error sincronizando Firestore: ' + msg, 'error');
-              console.error('syncFirebaseRegistros error:', e);
-              resolve();
-            });
+            const msg = buildFirestoreErrorMessage('Error sincronizando Firestore directo', e);
+            setSyncStatus(msg, 'error');
+            console.error('syncFirebaseRegistrosDirect error:', e);
+            resolve();
+          });
       } catch (error) {
-        const msg = error && error.message ? error.message : String(error);
-        setSyncStatus('Error sincronizando Firestore: ' + msg, 'error');
-        console.error('syncFirebaseRegistros exception:', error);
+        const msg = buildFirestoreErrorMessage('Error sincronizando Firestore directo', error);
+        setSyncStatus(msg, 'error');
+        console.error('syncFirebaseRegistrosDirect exception:', error);
         resolve();
       }
     });
   }
 
   function loadFirebaseRegistros() {
+    const proxyUrl = getFirestoreProxyUrl();
+    if (proxyUrl) {
+      setSyncStatus('Cargando datos desde proxy Firestore...', 'warning');
+      return requestFirestoreProxy('GET')
+        .then((data) => {
+          setSyncStatus('Datos cargados desde proxy Firestore', 'success');
+          return Array.isArray(data?.registros) ? data.registros : null;
+        })
+        .catch((e) => {
+          if (isFirestoreDirectEnabled() && isProxyUnavailableError(e)) {
+            console.warn('Proxy Firestore no disponible, intentando cargar Firestore directo...', e);
+            return loadFirebaseRegistrosDirect();
+          }
+          const msg = buildFirestoreErrorMessage('No se pudo cargar proxy Firestore', e);
+          setSyncStatus(msg, 'error');
+          console.error('loadFirebaseRegistros proxy error:', e);
+          return null;
+        });
+    }
+
+    if (isFirestoreDirectEnabled()) {
+      return loadFirebaseRegistrosDirect();
+    }
+
+    setSyncStatus('Sin proxy de Firestore y Firestore directo no habilitado. Configure FIRESTORE_DIRECT o use proxy.', 'warning');
+    return Promise.resolve(null);
+  }
+
+  function loadFirebaseRegistrosDirect() {
     const config = getFirebaseConfig();
     if (!config || typeof window === 'undefined' || !window.firebase || !window.firebase.firestore) {
-      setSyncStatus('Firestore no disponible', 'warning');
+      setSyncStatus('Firestore directo no disponible', 'warning');
       return Promise.resolve(null);
     }
 
-    setSyncStatus('Cargando datos desde Firestore...', 'warning');
+    setSyncStatus('Cargando datos desde Firestore directo...', 'warning');
 
     return new Promise((resolve) => {
       try {
@@ -163,18 +267,21 @@
         db.collection(FIREBASE_COLLECTION).doc('app-data').get().then((doc) => {
           if (doc.exists) {
             const data = doc.data();
-            setSyncStatus('Datos cargados desde Firestore', 'success');
+            setSyncStatus('Datos cargados desde Firestore directo', 'success');
             resolve(Array.isArray(data?.registros) ? data.registros : null);
           } else {
-            setSyncStatus('No hay datos en Firestore', 'warning');
+            setSyncStatus('No hay datos en Firestore directo', 'warning');
             resolve(null);
           }
-        }).catch(() => {
-          setSyncStatus('No se pudo cargar Firestore', 'error');
+        }).catch((e) => {
+          const msg = buildFirestoreErrorMessage('No se pudo cargar Firestore directo', e);
+          setSyncStatus(msg, 'error');
+          console.error('loadFirebaseRegistrosDirect error:', e);
           resolve(null);
         });
       } catch (error) {
-        setSyncStatus('No se pudo cargar Firestore', 'error');
+        const msg = buildFirestoreErrorMessage('No se pudo cargar Firestore directo', error);
+        setSyncStatus(msg, 'error');
         resolve(null);
       }
     });
